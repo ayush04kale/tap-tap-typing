@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Tap Tap Type</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --text-color: #d0d0d0; /* Slightly darker default text for better contrast */
+            --accent-color: #76FF03; /* Brighter green for correct letters */
+            --error-color: #f44336;
+            --border-color: #333;
+            --hover-bg: #2a2a2a;
+        }
+
+        body {
+            background: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Fira Code', monospace;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            align-items: center;
+            justify-content: center;
+            overflow-y: auto;
+        }
+        .container {
+            max-width: 1100px;
+            width: 100%;
+            margin: auto;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 0;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            width: 100%;
+        }
+        header h1 {
+            font-size: clamp(2rem, 5vw, 3.2rem);
+            font-weight: 700;
+            color: #fff;
+            margin: 0;
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+            white-space: nowrap;
+        }
+        .typing-hands-logo {
+            height: clamp(50px, 10vw, 65px);
+            width: clamp(70px, 15vw, 90px);
+            flex-shrink: 0;
+            color: var(--accent-color);
+            transition: color 0.3s ease;
+        }
+        .typing-hands-logo:hover {
+            color: #66BB6A;
+        }
+        .typing-hands-logo rect {
+            fill: #2c2c2c;
+        }
+        .typing-hands-logo path, .typing-hands-logo circle {
+            fill: #DDD;
+        }
+
+        .stats {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            padding: 8px 15px;
+            margin-bottom: 40px;
+            font-size: 1.1rem;
+            align-items: center;
+            text-align: center;
+            background: #222;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 750px;
+            box-sizing: border-box;
+        }
+        .stats > div {
+            padding: 4px 8px;
+            background-color: #333;
+            border-radius: 4px;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
+            min-width: 60px;
+        }
+        .stats span {
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .word-area {
+            font-size: 24px;
+            line-height: 1.8; /* Adjusted for 3 lines */
+            user-select: none;
+            word-spacing: 15px;
+            height: 170px; /* Adjusted height for exactly 3 lines with padding */
+            overflow-y: hidden; /* Keep hidden to prevent scrollbar */
+            margin-bottom: 40px;
+            padding: 20px 25px; /* Padding for visual spacing */
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            background-color: #181818;
+            box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.6);
+            width: 100%;
+            max-width: 900px;
+            box-sizing: border-box; /* Include padding in height calculation */
+            position: relative;
+            white-space: normal;
+        }
+        .word {
+            display: inline-block;
+            padding-bottom: 2px;
+            transition: background-color 0.1s ease-out;
+            position: relative;
+            color: var(--text-color); /* Default color for all words */
+        }
+        .word.current-word {
+            background-color: rgba(63, 81, 181, 0.4); /* Lighter, less opaque blue background for current word */
+            border-radius: 4px;
+            padding: 2px 4px;
+            margin: -2px -4px; /* Counteract padding to maintain layout */
+        }
+        /* Ensure letters in the current word use their specific colors (correct/incorrect) */
+        .letter.correct {
+            color: var(--accent-color); /* Bright Green */
+        }
+        .letter.incorrect {
+            color: var(--error-color); /* Red */
+            background-color: rgba(244, 67, 54, 0.2);
+            border-radius: 2px;
+        }
+        .cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1.2em;
+            background-color: white;
+            animation: blink 1s step-end infinite;
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            left: 0;
+        }
+        .letter.current + .cursor {
+            left: 100%;
+        }
+        .word.current-word .cursor {
+            left: 0;
+        }
+
+        @keyframes blink {
+            from, to { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        button, select {
+            border: none;
+            background: #333;
+            color: var(--text-color);
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+            font-family: 'Fira Code', monospace;
+            font-weight: 500;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        button:hover, select:hover {
+            background: #444;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+        button:active, select:active {
+            transform: translateY(0);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+        }
+        /* New styling for the restart button */
+        .control-button {
+            background-color: #555;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+            font-family: 'Fira Code', monospace;
+            font-weight: 500;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            margin-top: 20px; /* Space below word area */
+        }
+        .control-button:hover {
+            background: #6a6a6a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+        button#showLb {
+            background: #ffa500;
+        }
+        button#showLb:hover {
+            background: #cc8400;
+        }
+        button#showSuggestionBtn { /* New button for suggestion */
+            background-color: #007bff;
+        }
+        button#showSuggestionBtn:hover {
+            background-color: #0056b3;
+        }
+
+
+        #chart {
+            display: none;
+        }
+
+        /* General styles for hidden screens with smooth transition */
+        .screen-container {
+            opacity: 0;
+            transform: translateY(20px) scale(0.95);
+            pointer-events: none;
+            transition: all 0.5s ease;
+            width: 100%;
+            max-width: 750px;
+            margin-left: auto;
+            margin-right: auto;
+            padding: 20px;
+            box-sizing: border-box;
+            display: none; /* Hidden by default */
+            flex-direction: column; /* Ensure content stacks properly */
+            align-items: center;
+        }
+        .screen-container.show {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: auto;
+            display: flex; /* Show when active */
+        }
+
+        #gameScreen {
+            display: flex; /* Game screen is default visible */
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        /* Leaderboard Specific Styles (inherits from .screen-container) */
+        #leaderboard {
+             background: #181818;
+             border-radius: 12px;
+             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #181818;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-top: 25px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+        th, td {
+            padding: 12px 10px;
+            text-align: center;
+            color: var(--text-color);
+            font-size: 1.1rem;
+        }
+        th {
+            background: #2a2a2a;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+        }
+        tr:nth-child(even) {
+            background: #1f1f1f;
+        }
+        .gold { background: gold; color: #333; }
+        .silver { background: silver; color: #333; }
+        .bronze { background: #cd7f32; color: #fff; }
+
+        #backBtn {
+            margin-top: 25px;
+            background: #555;
+        }
+        #backBtn:hover {
+            background: #666;
+        }
+
+        footer {
+            margin-top: 40px;
+            padding: 25px;
+            text-align: center;
+            font-size: 0.95rem;
+            color: #888;
+            border-top: 1px solid #222;
+            width: 100%;
+            max-width: 960px;
+            box-sizing: border-box;
+        }
+        footer strong {
+            color: #ccc;
+        }
+
+        .gemini-feature-area {
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #2a2a2a;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+            box-sizing: border-box;
+        }
+        .gemini-feature-area input[type="text"] {
+            width: calc(100% - 20px);
+            padding: 12px;
+            border: 1px solid #555;
+            border-radius: 8px;
+            background-color: #1a1a1a;
+            color: var(--text-color);
+            font-family: 'Fira Code', monospace;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+        .gemini-feature-area input[type="text"]::placeholder {
+            color: #888;
+        }
+        .gemini-feature-area button {
+            background-color: #6a1b9a; /* Purple for AI */
+            color: #fff;
+            padding: 12px 25px;
+        }
+        .gemini-feature-area button:hover {
+            background-color: #8e24aa;
+        }
+        .loading-indicator {
+            color: #FFD700; /* Gold color */
+            font-size: 1.1rem;
+            margin-top: 10px;
+        }
+
+        /* Custom Message Box Styles */
+        #customMessageBox {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #333;
+            color: var(--text-color);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            z-index: 1000;
+            max-width: 400px;
+            text-align: center;
+            font-family: 'Fira Code', monospace;
+            font-size: 1.1rem;
+        }
+        #messageBoxCloseBtn {
+            margin-top: 20px;
+            background-color: var(--accent-color);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        #messageBoxCloseBtn:hover {
+            background-color: #388E3C; /* Darker green on hover */
+        }
+
+        #actualWordsContainer {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            padding: 0 0;
+        }
+
+        .suggestion-content-area { /* New class for the suggestion screen content */
+            padding: 20px;
+            background-color: #181818;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+            box-sizing: border-box;
+        }
+        .suggestion-content-area textarea {
+            width: calc(100% - 20px);
+            height: 100px;
+            padding: 12px;
+            border: 1px solid #555;
+            border-radius: 8px;
+            background-color: #1a1a1a;
+            color: var(--text-color);
+            font-family: 'Fira Code', monospace;
+            font-size: 1rem;
+            resize: vertical; /* Allow vertical resizing */
+            box-sizing: border-box;
+        }
+        .suggestion-content-area textarea::placeholder {
+            color: #888;
+        }
+        .suggestion-content-area button {
+            background-color: #007bff; /* Blue for suggestion button */
+            color: #fff;
+            padding: 12px 25px;
+        }
+        .suggestion-content-area button:hover {
+            background-color: #0056b3;
+        }
+        .suggestion-message {
+            color: #fff;
+            font-size: 1rem;
+            margin-top: 10px;
+            text-align: center;
+        }
+
+
+        @media (max-width: 768px) {
+            .gemini-feature-area, .suggestion-content-area {
+                padding: 15px;
+            }
+            .gemini-feature-area input[type="text"], .suggestion-content-area textarea {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- Game Screen (Default active) -->
+    <div id="gameScreen" class="screen-container show">
+        <header>
+            <!-- Typing Hands Logo (SVG) -->
+            <svg class="typing-hands-logo" viewBox="0 0 100 100" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                <!-- Simple representation of hands on a keyboard -->
+                <rect x="10" y="50" width="80" height="30" rx="5" ry="5" />
+                <rect x="15" y="55" width="10" height="8" rx="2" ry="2" />
+                <rect x="30" y="55" width="10" height="8" rx="2" ry="2" />
+                <rect x="45" y="55" width="10" height="8" rx="2" ry="2" />
+                <rect x="60" y="55" width="10" height="8" rx="2" ry="2" />
+
+                <!-- Left Hand -->
+                <path d="M 25 45 Q 20 40 15 45 L 10 50 L 20 55 L 25 50 Q 30 45 25 45 Z" />
+                <circle cx="20" cy="40" r="5" />
+                <circle cx="30" cy="40" r="5" />
+
+                <!-- Right Hand -->
+                <path d="M 75 45 Q 80 40 85 45 L 90 50 L 80 55 L 75 50 Q 70 45 75 45 Z" />
+                <circle cx="70" cy="40" r="5" />
+                <circle cx="80" cy="40" r="5" />
+
+                <!-- Subtle finger movement suggestion (optional) -->
+                <rect x="18" y="46" width="4" height="6" transform="rotate(-15 18 46)"/>
+                <rect x="78" y="46" width="4" height="6" transform="rotate(15 78 46)"/>
+            </svg>
+            <h1>Tap Tap Type</h1>
+        </header>
+        <div class="stats">
+            <div>Time: <span id="time">30</span>s</div>
+            <div>WPM: <span id="wpm">0</span></div>
+            <div>Acc: <span id="acc">0</span>%</div>
+            <select id="timeSelect">
+                <option value="15">15s</option>
+                <option value="30" selected>30s</option>
+                <option value="60">60s</option>
+                <option value="120">120s</option>
+            </select>
+            <button id="showLb">🏆 Leaderboard</button>
+            <button id="showSuggestionBtn">📝 Give Suggestion</button> <!-- New Suggestion Button -->
+        </div>
+        <div id="wordArea" class="word-area">
+            <div id="actualWordsContainer"></div>
+        </div>
+        <!-- New Restart Button below wordArea -->
+        <button id="restartBtn" class="control-button">↩ Restart Test</button>
+
+        <div id="chart"><canvas id="lineChart" height="50"></canvas></div>
+
+        <!-- AI Passage Generator -->
+        <div class="gemini-feature-area">
+            <h3>✨ AI Passage Generator</h3>
+            <input type="text" id="topicInput" placeholder="Enter a topic for your typing passage (e.g., Space, History, Food)">
+            <button id="generatePassageBtn">Generate Passage ✨</button>
+            <div id="loadingIndicator" class="loading-indicator" style="display:none;">Generating...</div>
+        </div>
+    </div>
+
+    <!-- Leaderboard Screen -->
+    <div id="leaderboard" class="screen-container">
+        <header>🏆 Leaderboard</header>
+        <table id="lb">
+            <thead><tr><th>#</th><th>Name</th><th>WPM</th><th>Accuracy</th></tr></thead>
+            <tbody></tbody>
+        </table>
+        <br>
+        <button id="backFromLbBtn" class="control-button">⬅ Back</button>
+    </div>
+
+    <!-- Suggestion Screen (New Tab) -->
+    <div id="suggestionScreen" class="screen-container">
+        <header>📝 Give Suggestion</header>
+        <div class="suggestion-content-area">
+            <textarea id="suggestionInput" placeholder="Tell us how this website can be made better..."></textarea>
+            <button id="submitSuggestionBtn">Send Suggestion</button>
+            <div id="suggestionMessage" class="suggestion-message" style="display:none;"></div>
+        </div>
+        <br>
+        <button id="backFromSuggestionBtn" class="control-button">⬅ Back</button>
+    </div>
+
+
+</div>
+
+<!-- Custom Message Box HTML (added near body end for accessibility) -->
+<div id="customMessageBox">
+    <p id="messageBoxContent"></p>
+    <button id="messageBoxCloseBtn">OK</button>
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    let db, auth, userId;
+    let appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+
+    // Initialize Firebase
+    if (Object.keys(firebaseConfig).length > 0) {
+        const app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
+        auth = getAuth(app);
+
+        // Sign in anonymously if no auth token, otherwise use custom token
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                userId = user.uid;
+            } else {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    try {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                        userId = auth.currentUser.uid;
+                    } catch (error) {
+                        console.error("Firebase custom auth failed:", error);
+                        // Fallback to anonymous if custom token fails
+                        try {
+                            const anonUser = await signInAnonymously(auth);
+                            userId = anonUser.user.uid;
+                        } catch (anonError) {
+                            console.error("Firebase anonymous auth failed:", anonError);
+                            userId = crypto.randomUUID(); // Fallback to random ID
+                        }
+                    }
+                } else {
+                    try {
+                        const anonUser = await signInAnonymously(auth);
+                        userId = anonUser.user.uid;
+                    } catch (error) {
+                        console.error("Firebase anonymous auth failed:", error);
+                        userId = crypto.randomUUID(); // Fallback to random ID
+                    }
+                }
+            }
+            console.log("Firebase initialized. User ID:", userId);
+        });
+    } else {
+        console.warn("Firebase config not found. Firestore features will be disabled.");
+        userId = crypto.randomUUID(); // Generate a random ID for non-Firebase fallback
+    }
+
+    // Function to submit suggestion to Firestore
+    async function submitSuggestion() {
+        const suggestionText = document.getElementById('suggestionInput').value.trim();
+        const suggestionMessageEl = document.getElementById('suggestionMessage');
+        const submitBtn = document.getElementById('submitSuggestionBtn');
+        const LAST_SUBMISSION_KEY = 'lastSuggestionSubmitTime'; // Key for localStorage
+
+        // Check if user has already submitted today
+        const lastSubmitTime = localStorage.getItem(LAST_SUBMISSION_KEY);
+        const now = new Date().getTime();
+        const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+        if (lastSubmitTime && (now - parseInt(lastSubmitTime, 10)) < ONE_DAY_MS) {
+            suggestionMessageEl.style.color = 'var(--error-color)';
+            suggestionMessageEl.innerText = 'You can only send one suggestion per day. Please try again tomorrow.';
+            suggestionMessageEl.style.display = 'block';
+            submitBtn.disabled = true; // Keep button disabled if limit hit
+            return;
+        }
+
+
+        if (!suggestionText) {
+            suggestionMessageEl.style.color = 'var(--error-color)';
+            suggestionMessageEl.innerText = 'Please write your suggestion.';
+            suggestionMessageEl.style.display = 'block';
+            return;
+        }
+
+        if (!db || !userId) {
+            suggestionMessageEl.style.color = 'var(--error-color)';
+            suggestionMessageEl.innerText = 'Database not available. Please try again later.';
+            suggestionMessageEl.style.display = 'block';
+            console.error("Firestore not initialized or userId not available.");
+            return;
+        }
+
+        submitBtn.disabled = true;
+        suggestionMessageEl.style.color = '#FFD700';
+        suggestionMessageEl.innerText = 'Sending...';
+        suggestionMessageEl.style.display = 'block';
+
+        try {
+            // Path: /artifacts/{appId}/public/data/suggestions
+            const suggestionsCollectionRef = collection(db, `artifacts/${appId}/public/data/suggestions`);
+            await addDoc(suggestionsCollectionRef, {
+                userId: userId,
+                suggestion: suggestionText,
+                timestamp: serverTimestamp()
+            });
+            suggestionMessageEl.style.color = 'var(--accent-color)';
+            suggestionMessageEl.innerText = 'Suggestion sent successfully! Thank you!';
+            document.getElementById('suggestionInput').value = ''; // Clear input
+
+            // Store submission timestamp in local storage
+            localStorage.setItem(LAST_SUBMISSION_KEY, now.toString());
+
+        } catch (e) {
+            console.error("Error adding document: ", e);
+            suggestionMessageEl.style.color = 'var(--error-color)';
+            suggestionMessageEl.innerText = 'Error sending suggestion. Please try again.';
+        } finally {
+            // Only re-enable if not on a daily limit, otherwise it stays disabled
+            const currentLastSubmitTime = localStorage.getItem(LAST_SUBMISSION_KEY);
+            if (!currentLastSubmitTime || (now - parseInt(currentLastSubmitTime, 10)) >= ONE_DAY_MS) {
+                 submitBtn.disabled = false;
+            }
+            setTimeout(() => {
+                suggestionMessageEl.style.display = 'none';
+            }, 3000); // Hide message after 3 seconds
+        }
+    }
+
+    // Function to check daily limit on page load for suggestion button
+    function checkDailySuggestionLimit() {
+        const submitBtn = document.getElementById('submitSuggestionBtn');
+        const suggestionMessageEl = document.getElementById('suggestionMessage');
+        const LAST_SUBMISSION_KEY = 'lastSuggestionSubmitTime';
+        const lastSubmitTime = localStorage.getItem(LAST_SUBMISSION_KEY);
+        const now = new Date().getTime();
+        const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+        if (lastSubmitTime && (now - parseInt(lastSubmitTime, 10)) < ONE_DAY_MS) {
+            submitBtn.disabled = true;
+            suggestionMessageEl.style.color = 'var(--error-color)';
+            suggestionMessageEl.innerText = 'You can only send one suggestion per day. Please try again tomorrow.';
+            suggestionMessageEl.style.display = 'block';
+        } else {
+            submitBtn.disabled = false;
+            suggestionMessageEl.style.display = 'none'; // Ensure hidden if not on limit
+        }
+    }
+
+
+    // Add event listener for the new suggestion button
+    document.addEventListener('DOMContentLoaded', () => {
+        const submitSuggestionBtn = document.getElementById('submitSuggestionBtn');
+        if (submitSuggestionBtn) {
+            submitSuggestionBtn.addEventListener('click', submitSuggestion);
+        }
+        checkDailySuggestionLimit(); // Check on initial load
+    });
+
+    // Make Firebase variables accessible globally for other scripts if needed (optional)
+    window.firebaseApp = window.firebaseApp || {};
+    window.firebaseApp.db = db;
+    window.firebaseApp.auth = auth;
+    window.firebaseApp.userId = userId;
+</script>
+
+<!-- Main Game Logic (Remains largely the same, but now uses fullGameReset and setupNewPassage) -->
+<script>
+    // List of typing passages
+    const passages = [
+        "typing with neon glow design is fun and immersive lets build your speed and accuracy with style keep your eyes on each character and let the neon guide your typing journey",
+        "the quick brown fox jumps over the lazy dog under neon lights every keystroke feeling sharp and precise across the glowing keyboard layout enjoy the rhythm",
+        "in the world of fast fingers and sharp minds the tap tap typing game stands tall challenge yourself with longer phrases focus on accuracy speed and rhythm and enjoy the thrill of every correct keystroke",
+        "the quick brown fox jumps over the lazy dog. this sentence is a classic example of a pangram, used to display all letters of the alphabet. typing speed tests often include such phrases to ensure comprehensive practice. focus on accuracy before striving for high words per minute. consistent practice will lead to significant improvement over time. enjoy the rhythm and flow of words as you type. develop muscle memory for faster, more efficient keystrokes. learning to touch type is a valuable skill in the digital age. patience and repetition are key to mastering any new ability. keep practicing daily to enhance your typing performance.",
+        "in the vast landscape of digital communication, efficient typing is paramount. whether crafting emails, writing reports, or engaging in online chats, speed and accuracy save valuable time. regular exercises, like those on tap tap type, help hone these essential skills. challenge yourself with varying passage lengths and content to adapt to different typing scenarios. monitor your progress and celebrate small victories. every correct keystroke builds confidence and improves your overall performance. embrace the journey of becoming a proficient typist, one word at a time. the world awaits your swift and precise fingers.",
+        "technology continues to evolve at a rapid pace, making fast and accurate typing an indispensable skill for everyone in the modern age. from students completing assignments to professionals drafting documents, typing proficiency enhances productivity. this platform provides an excellent opportunity to refine your skills through engaging practice sessions. concentrate on maintaining a steady rhythm and minimizing errors. remember that building speed takes time and consistent effort. celebrate each milestone and stay motivated to achieve your typing goals. your dedication will undoubtedly lead to impressive results and improved efficiency in all your digital tasks.",
+        "the silent keys click softly under agile fingertips, weaving words into digital tapestries. a steady rhythm emerges as thoughts flow seamlessly onto the screen. improving typing speed is a journey of patience and consistent effort. each session brings you closer to mastery. embrace the challenge and watch your wpm climb higher.",
+        "writing without looking at the keyboard feels like magic. it is a skill honed through countless hours of dedication. accurate typing reduces frustration and boosts productivity in every task. remember to maintain good posture and relax your wrists. the path to typing excellence is open to everyone who commits to practice daily.",
+        "explore the art of typing with precision. every character counts towards your overall score. develop consistency and maintain a steady pace. the more you practice, the faster your fingers will become. challenge yourself to beat your previous best and improve your accuracy.",
+        "mastering the keyboard is an essential skill in today's digital world. learn to type without looking at the keys to boost your efficiency. regular practice sessions are crucial for building muscle memory and improving speed. focus on your form and technique for optimal results. soon you will be typing effortlessly and swiftly.",
+        "the future of typing is here with advanced ergonomic keyboards and intelligent spell checkers making every word count more efficiently embrace the new technology and type with ease"
+    ];
+
+    // Game state variables
+    let words = [], currentWordIndex = 0, currentLetterIndex = 0;
+    let started = false, timeLeft = 30, total = 30, timer;
+    let wpm = 0, acc = 0, wpmHist = [];
+    let lb = JSON.parse(localStorage.getItem("tapLb") || "[]"); // Leaderboard data from local storage
+    let chart;
+    let gameEnded = false; // Flag to track game state
+
+    // DOM element references
+    const gameScreen = document.getElementById("gameScreen");
+    const leaderboardScreen = document.getElementById("leaderboard");
+    const suggestionScreen = document.getElementById("suggestionScreen"); // New: Suggestion screen reference
+
+    const wordArea = document.getElementById("wordArea");
+    let actualWordsContainer = document.getElementById("actualWordsContainer");
+    const tEl = document.getElementById("time");
+    const wEl = document.getElementById("wpm");
+    const aEl = document.getElementById("acc");
+    const restartBtn = document.getElementById("restartBtn");
+    const timeSelect = document.getElementById("timeSelect");
+    const showLbBtn = document.getElementById("showLb");
+    const backFromLbBtn = document.getElementById("backFromLbBtn"); // Specific back button for leaderboard
+    const showSuggestionBtn = document.getElementById("showSuggestionBtn"); // New: Button to show suggestion screen
+    const backFromSuggestionBtn = document.getElementById("backFromSuggestionBtn"); // New: Back button for suggestion screen
+    const topicInput = document.getElementById("topicInput");
+    const generatePassageBtn = document.getElementById("generatePassageBtn");
+    const loadingIndicator = document.getElementById("loadingIndicator");
+
+    // Function to show custom message box (replaces alert())
+    function showMessageBox(message) {
+        document.getElementById('messageBoxContent').innerText = message;
+        document.getElementById('customMessageBox').style.display = 'block';
+    }
+
+    // Event listener for message box close button
+    document.getElementById('messageBoxCloseBtn').addEventListener('click', () => {
+        document.getElementById('customMessageBox').style.display = 'none';
+    });
+
+    // Helper to switch screens
+    function showScreen(screenToShow) {
+        const allScreens = [gameScreen, leaderboardScreen, suggestionScreen];
+        allScreens.forEach(screen => {
+            if (screen === screenToShow) {
+                screen.classList.add('show');
+            } else {
+                screen.classList.remove('show');
+            }
+        });
+    }
+
+    // Resets all game state variables and prepares for a new test
+    function fullGameReset() {
+        clearInterval(timer); // Stop any active timer
+        gameEnded = false;
+        started = false;
+        timeLeft = total; // Reset time to selected total
+        currentWordIndex = 0;
+        currentLetterIndex = 0;
+        wpm = 0;
+        acc = 0;
+        wpmHist = []; // Clear WPM history for new chart
+        tEl.innerText = timeLeft; // Update displayed time immediately
+        wEl.innerText = 0;
+        aEl.innerText = 0;
+        if (chart) chart.destroy(); // Destroy old chart instance
+        chart = null;
+        
+        // Recreate actualWordsContainer if it was removed (e.g., by save function)
+        if (!actualWordsContainer || !wordArea.contains(actualWordsContainer)) {
+            actualWordsContainer = document.createElement('div');
+            actualWordsContainer.id = 'actualWordsContainer';
+            wordArea.appendChild(actualWordsContainer);
+        } else {
+             // If it exists, just clear its content
+            actualWordsContainer.innerHTML = '';
+        }
+
+        document.querySelectorAll('.cursor').forEach(c => c.remove());
+        setupNewPassage(); // Load a random passage after full reset
+    }
+
+    // Loads new passage content without resetting game timer or stats
+    function setupNewPassage(text = null) {
+        currentWordIndex = 0;
+        currentLetterIndex = 0;
+
+        const passageToLoad = text || passages[Math.floor(Math.random() * passages.length)];
+        actualWordsContainer.innerHTML = ''; // Clear only the words container content
+
+        words = passageToLoad.split(" ").map(word => word.split(""));
+        words.forEach((letters, i) => {
+            const wordSpan = document.createElement("span");
+            wordSpan.classList.add("word");
+            if (i === 0) wordSpan.classList.add("current-word"); // Set first word as current
+            letters.forEach(l => {
+                const letterSpan = document.createElement("span");
+                letterSpan.innerText = l;
+                letterSpan.classList.add("letter");
+                wordSpan.appendChild(letterSpan);
+            });
+            actualWordsContainer.appendChild(wordSpan);
+            actualWordsContainer.append(" "); // Add space after each word
+        });
+        updateCursorPosition(); // Set initial cursor position
+        enableTypingInput(); // Ensure typing input is enabled
+    }
+
+    // Updates cursor position and handles passage scrolling
+    function updateCursorPosition() {
+        // Remove existing cursors and 'current' letter highlights
+        document.querySelectorAll('.cursor').forEach(c => c.remove());
+        document.querySelectorAll('.letter.current').forEach(l => l.classList.remove('current'));
+
+        const currentWordElement = actualWordsContainer.querySelectorAll(".word")[currentWordIndex];
+        if (!currentWordElement) return;
+
+        const letters = currentWordElement.querySelectorAll(".letter");
+        let cursorSpan = document.createElement("span");
+        cursorSpan.classList.add("cursor");
+
+        // Place cursor based on current letter index
+        if (currentLetterIndex < letters.length) {
+            letters[currentLetterIndex].parentNode.insertBefore(cursorSpan, letters[currentLetterIndex]);
+            letters[currentLetterIndex].classList.add('current');
+        } else if (currentWordIndex < words.length - 1) {
+            // If at the end of a word (not the last word), place cursor after the word
+            const spaceAfterWord = currentWordElement.nextSibling;
+            if (spaceAfterWord && spaceAfterWord.nodeType === Node.TEXT_NODE && spaceAfterWord.textContent === ' ') {
+                spaceAfterWord.parentNode.insertBefore(cursorSpan, spaceAfterWord);
+            } else {
+                currentWordElement.appendChild(cursorSpan);
+            }
+        } else {
+            // At the very end of the last word
+            currentWordElement.appendChild(cursorSpan);
+        }
+
+        // Smooth scrolling logic to keep the current word in view
+        if (currentWordElement) {
+            currentWordElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+        }
+    }
+
+    // Visually disables typing input
+    function disableTypingInput() {
+        wordArea.style.pointerEvents = 'none';
+        wordArea.style.opacity = '0.7';
+        const existingMessage = wordArea.querySelector('.game-end-message');
+        if (existingMessage) existingMessage.remove();
+        document.querySelectorAll('.cursor').forEach(c => c.remove());
+    }
+
+    // Re-enables typing input
+    function enableTypingInput() {
+        wordArea.style.pointerEvents = 'auto';
+        wordArea.style.opacity = '1';
+        const existingMessage = wordArea.querySelector('.game-end-message');
+        if (existingMessage) existingMessage.remove();
+        updateCursorPosition();
+    }
+
+    // Starts the game timer
+    function startTimer() {
+        timer = setInterval(() => {
+            timeLeft--;
+            tEl.innerText = timeLeft;
+            updateWPM();
+            if (timeLeft <= 0) {
+                clearInterval(timer);
+                gameEnded = true;
+                save('time'); // Save results and show chart on time up
+                disableTypingInput();
+            }
+        }, 1000);
+    }
+
+    // Calculates and updates WPM and Accuracy
+    function updateWPM() {
+        let actualCorrectChars = 0;
+        let actualTotalTypedChars = 0; // Chars typed that correspond to the passage
+
+        // Iterate through all words and their typed letters
+        actualWordsContainer.querySelectorAll(".word").forEach((wordElement, wordIdx) => {
+            const originalWordLength = words[wordIdx] ? words[wordIdx].length : 0;
+            wordElement.querySelectorAll(".letter").forEach((letterSpan, charIdx) => {
+                // Only consider characters that are part of the original passage
+                if (charIdx < originalWordLength) {
+                    actualTotalTypedChars++;
+                    if (letterSpan.classList.contains('correct')) {
+                        actualCorrectChars++;
+                    }
+                }
+            });
+        });
+
+        const mins = (total - timeLeft) / 60;
+        // WPM calculation based on correctly typed characters (5 characters per "word")
+        const netWPM = (mins > 0) ? Math.round((actualCorrectChars / 5) / mins) : 0;
+        wpm = netWPM;
+        wpmHist.push(netWPM);
+        wEl.innerText = netWPM;
+
+        // Accuracy is based on (correct chars / total chars attempted within passage length)
+        acc = (actualTotalTypedChars > 0) ? Math.round((actualCorrectChars / actualTotalTypedChars) * 100) : 0;
+        aEl.innerText = acc;
+    }
+
+    // Shows the WPM chart in a new tab with performance details
+    function showChartInNewTab() {
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = 800;
+        tempCanvas.height = 300; // Graph height
+
+        const ctx = tempCanvas.getContext('2d');
+        const tempChart = new Chart(ctx, {
+            type: "line",
+            data: {
+                labels: wpmHist.map((_, i) => i + 1), // X-axis labels (seconds)
+                datasets: [{
+                    data: wpmHist, // Y-axis data (WPM per second)
+                    borderColor: "#4CAF50",
+                    borderWidth: 2,
+                    pointRadius: 3,
+                    pointBackgroundColor: "#4CAF50",
+                    fill: false,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: false,
+                plugins: {
+                    legend: { display: false },
+                    title: {
+                        display: true,
+                        text: 'WPM Progress (Per Second)',
+                        color: '#e0e0e0',
+                        font: { size: 18 }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { color: "rgba(255,255,255,0.08)" },
+                        ticks: { color: "#888" },
+                        title: { display: true, text: 'Time (Seconds)', color: '#ccc' }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: "rgba(255,255,255,0.08)" },
+                        ticks: { color: "#888" },
+                        title: { display: true, text: 'WPM', color: '#ccc' }
+                    }
+                }
+            }
+        });
+
+        // Generate image and open in new window after chart renders
+        setTimeout(() => {
+            const imageDataUrl = tempChart.toBase64Image('image/png', 1.0);
+            tempChart.destroy(); // Clean up temporary chart
+
+            const newWindow = window.open("", "_blank");
+            if (newWindow) {
+                newWindow.document.write(`
+                    <!DOCTYPE html>
+                    <html lang="en">
+                    <head>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <title>Tap Tap Type - Your WPM Progress</title>
+                        <style>
+                            body { background-color: #1a1a1a; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; margin: 0; font-family: 'Fira Code', monospace; color: #e0e0e0; padding: 20px;}
+                            .chart-container { padding: 20px; background-color: #181818; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); text-align: center; max-width: 850px; width: 90%; box-sizing: border-box; }
+                            h2 { color: #4CAF50; margin-bottom: 20px; font-size: 1.8rem; }
+                            img { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+                            .chart-actions { margin-top: 25px; }
+                            .chart-actions button {
+                                background: #555;
+                                color: #eee;
+                                border: none;
+                                padding: 10px 20px;
+                                border-radius: 8px;
+                                cursor: pointer;
+                                font-family: 'Fira Code', monospace;
+                                transition: background 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+                                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+                            }
+                            .chart-actions button:hover {
+                                background: #666;
+                                transform: translateY(-2px);
+                                box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+                            }
+                            @media (max-width: 600px) {
+                                .chart-container { padding: 15px; }
+                                h2 { font-size: 1.5rem; }
+                            }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="chart-container">
+                            <h2>Your Typing Performance Chart</h2>
+                            <img src="${imageDataUrl}" alt="WPM Performance Chart">
+                            <p style="margin-top:20px; color:#888;">This chart shows your Words Per Minute (WPM) progression during the session.</p>
+                            <p style="color:#eee; font-size:1.1em;">Final WPM: <strong>${wpm}</strong> | Accuracy: <strong>${acc}%</strong></p>
+                            <div class="chart-actions">
+                                <button onclick="window.opener.focus(); window.opener.location.reload(); window.close();">Restart Typing Test</button>
+                            </div>
+                        </div>
+                    </body>
+                    </html>
+                `);
+                newWindow.document.close();
+            } else {
+                // Display message if pop-up is blocked
+                const messageDiv = document.createElement('div');
+                messageDiv.classList.add('game-end-message', 'error');
+                wordArea.appendChild(messageDiv); // Append to wordArea for display
+                messageDiv.innerText = 'Pop-up blocked! Please allow pop-ups for this site to view the chart.';
+            }
+        }, 50); // Small delay to ensure chart renders
+    }
+
+    // Saves final game results (only on timer end)
+    async function save(reason) {
+        if (reason === 'time') { // Only save if the reason is time running out
+            clearInterval(timer); // Stop the timer
+            gameEnded = true; // Mark game as ended
+            let name = prompt("Enter your name:", "Guest") || "Guest"; // Prompt for name
+            
+            lb.push({ name, wpm, acc });
+            lb.sort((a, b) => b.wpm - a.wpm); // Sort by WPM descending
+            lb = lb.slice(0, 3); // Keep only top 3 scores
+            localStorage.setItem("tapLb", JSON.stringify(lb)); // Save to local storage
+            updateLeaderboardDisplay(); // Update leaderboard table
+
+            actualWordsContainer.innerHTML = ''; // Clear words on screen
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('game-end-message');
+            messageDiv.style.color = '#f44336';
+            messageDiv.innerText = 'Time\'s Up! Press ↩ Restart Test to try again.';
+            wordArea.appendChild(messageDiv);
+            disableTypingInput(); // Disable input
+            showChartInNewTab(); // Show chart
+        }
+        // 'passage' reason no longer triggers save(), just loads next passage
+    }
+
+    // Updates the leaderboard table in the DOM
+    function updateLeaderboardDisplay() {
+        const lbTable = document.querySelector("#lb tbody");
+        lbTable.innerHTML = ""; // Clear existing rows
+
+        if (lb.length === 0) {
+            lbTable.innerHTML = "<tr><td colspan='4'>No data yet</td></tr>";
+        } else {
+            lb.forEach((p, i) => {
+                const cls = i === 0 ? "gold" : i === 1 ? "silver" : i === 2 ? "bronze" : "";
+                lbTable.innerHTML += `<tr class="${cls}"><td>${i + 1}</td><td>${p.name}</td><td>${p.wpm}</td><td>${p.acc}%</td></tr>`;
+            });
+        }
+    }
+
+    // Handles keyboard input
+    document.addEventListener("keydown", e => {
+        // IMPORTANT: Ignore keydown events if focus is on an input field (like topicInput) or a select dropdown or suggestion input
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') {
+            return; 
+        }
+
+        // Ignore input if game has ended (only happens when time runs out)
+        if (gameEnded) {
+            e.preventDefault();
+            return;
+        }
+
+        // Only start timer on first actual character input (not space or backspace)
+        if (!started && e.key.length === 1 && e.key !== " ") {
+            started = true;
+            startTimer();
+        }
+
+        // Ignore input if time is up (redundant with gameEnded check, but good for clarity)
+        if (timeLeft <= 0) {
+            e.preventDefault();
+            return;
+        }
+
+        const currentWordElement = actualWordsContainer.querySelectorAll(".word")[currentWordIndex];
+        if (!currentWordElement) { // Safety check
+            e.preventDefault();
+            return;
+        }
+        const letters = currentWordElement.querySelectorAll(".letter");
+
+        // Handle character input (a-z, 0-9, symbols)
+        if (e.key.length === 1 && e.key !== " ") {
+            // Only allow typing if within the expected word length
+            if (currentLetterIndex < letters.length) {
+                // Remove existing correct/incorrect classes before adding new one
+                letters[currentLetterIndex].classList.remove("correct", "incorrect"); 
+                letters[currentLetterIndex].classList.add(e.key === letters[currentLetterIndex].innerText ? "correct" : "incorrect");
+                currentLetterIndex++;
+            }
+            // If currentLetterIndex >= letters.length, we simply ignore further character input until space
+            e.preventDefault(); // Always prevent default for character keys if we're handling them
+        }
+        // Handle Backspace
+        else if (e.key === "Backspace") {
+            e.preventDefault(); // Prevent browser back navigation
+            if (currentLetterIndex > 0) {
+                currentLetterIndex--;
+                // Remove correctness/incorrectness from the letter at the new currentLetterIndex
+                if (letters[currentLetterIndex]) {
+                    letters[currentLetterIndex].classList.remove("correct", "incorrect");
+                }
+            } else if (currentWordIndex > 0) {
+                // Move to the previous word
+                const prevWordElement = actualWordsContainer.querySelectorAll(".word")[currentWordIndex - 1];
+                actualWordsContainer.querySelectorAll(".word")[currentWordIndex].classList.remove("current-word"); // Remove from current
+                prevWordElement.classList.add("current-word"); // Add to previous
+
+                currentWordIndex--;
+                currentLetterIndex = prevWordElement.querySelectorAll(".letter").length; // Go to end of previous word
+
+                // Clear classes on all letters of the previous word to allow re-typing
+                prevWordElement.querySelectorAll(".letter").forEach(l => l.classList.remove("correct", "incorrect"));
+            }
+            updateWPM();
+            updateCursorPosition();
+        }
+        // Handle Spacebar
+        else if (e.key === " ") {
+            e.preventDefault(); // Prevent default space behavior (e.g., scrolling)
+            if (currentWordIndex === 0 && currentLetterIndex === 0 && !started) {
+                return; // Prevent space at very start
+            }
+            // Mark any untyped letters in the current word as incorrect
+            for (let i = currentLetterIndex; i < letters.length; i++) {
+                letters[i].classList.add("incorrect");
+            }
+
+            updateWPM(); // Update WPM after completing a word
+
+            currentWordIndex++;
+            currentLetterIndex = 0;
+
+            const allWords = actualWordsContainer.querySelectorAll(".word");
+            allWords.forEach(w => w.classList.remove("current-word"));
+
+            if (currentWordIndex < words.length) {
+                allWords[currentWordIndex].classList.add("current-word");
+            } else {
+                // End of passage, but timer is still running
+                const messageDiv = document.createElement('div');
+                messageDiv.classList.add('game-end-message');
+                messageDiv.style.color = '#4CAF50';
+                messageDiv.innerText = 'Passage Completed! Loading next...';
+                wordArea.appendChild(messageDiv);
+                disableTypingInput(); // Temporarily disable input for message
+                
+                setTimeout(() => {
+                    messageDiv.remove(); // Remove the message
+                    setupNewPassage(); // Load a new passage
+                }, 1000); // Show message for 1 second
+                return;
+            }
+            updateCursorPosition();
+        }
+    });
+
+    // Event listener for new Restart button
+    restartBtn.addEventListener("click", () => {
+        fullGameReset(); // This will reset the game and load a new passage
+    });
+
+    // Add event listener for time selection
+    timeSelect.addEventListener('change', () => {
+        total = parseInt(timeSelect.value, 10); // Update total based on selection
+        fullGameReset(); // Load a new passage with the new time
+    });
+
+    // Initialize game on window load
+    window.onload = () => {
+        fullGameReset(); // Start with a clean game and a new passage
+        updateLeaderboardDisplay();
+    };
+
+    // Event listeners for screen toggles
+    document.getElementById("showLb").addEventListener("click", () => {
+        showScreen(leaderboardScreen);
+    });
+    document.getElementById("backFromLbBtn").addEventListener("click", () => { // Specific back button
+        showScreen(gameScreen);
+    });
+
+    // New: Event listener for Show Suggestion button
+    document.getElementById("showSuggestionBtn").addEventListener("click", () => {
+        showScreen(suggestionScreen);
+        // Ensure the suggestion message is updated when showing the screen
+        const submitBtn = document.getElementById('submitSuggestionBtn');
+        const suggestionMessageEl = document.getElementById('suggestionMessage');
+        const LAST_SUBMISSION_KEY = 'lastSuggestionSubmitTime';
+        const lastSubmitTime = localStorage.getItem(LAST_SUBMISSION_KEY);
+        const now = new Date().getTime();
+        const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+        if (lastSubmitTime && (now - parseInt(lastSubmitTime, 10)) < ONE_DAY_MS) {
+            submitBtn.disabled = true;
+            suggestionMessageEl.style.color = 'var(--error-color)';
+            suggestionMessageEl.innerText = 'You can only send one suggestion per day. Please try again tomorrow.';
+            suggestionMessageEl.style.display = 'block';
+        } else {
+            submitBtn.disabled = false;
+            suggestionMessageEl.style.display = 'none'; // Ensure hidden if not on limit
+            document.getElementById('suggestionInput').value = ''; // Clear input if not on limit
+        }
+    });
+    // New: Event listener for Back from Suggestion button
+    document.getElementById("backFromSuggestionBtn").addEventListener("click", () => {
+        showScreen(gameScreen);
+    });
+
+    // --- AI Passage Generator ---
+    generatePassageBtn.addEventListener('click', async () => {
+        const topic = topicInput.value.trim();
+        if (!topic) {
+            showMessageBox('Please enter a topic to generate a passage!');
+            return;
+        }
+
+        loadingIndicator.style.display = 'block'; // Show loading indicator
+        generatePassageBtn.disabled = true; // Disable button during generation
+        topicInput.disabled = true;
+
+        const prompt = `Generate a short and concise English typing passage (around 30-50 words, suitable for a typing test) on the topic of "${topic}". Ensure it's a single paragraph and contains no special characters or numbers, only letters and spaces.`;
+
+        let chatHistory = [];
+        chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+        const payload = { contents: chatHistory };
+        const apiKey = ""; // If you want to use models other than gemini-2.5-flash-preview-05-20 or imagen-3.0-generate-002, provide an API key here. Otherwise, leave this as-is.
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+        // Exponential backoff for API calls
+        const MAX_RETRIES = 3;
+        let retries = 0;
+        let generatedText = null;
+
+        while (retries < MAX_RETRIES) {
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                
+                if (result.candidates && result.candidates.length > 0 &&
+                    result.candidates[0].content && result.candidates[0].content.parts &&
+                    result.candidates[0].content.parts.length > 0) {
+                    generatedText = result.candidates[0].content.parts[0].text;
+                    break; // Success, exit loop
+                } else {
+                    console.error("AI API response structure unexpected:", result);
+                    generatedText = "Could not generate passage. Please try another topic.";
+                    break; // Treat as a non-retryable error for content structure
+                }
+            } catch (error) {
+                console.error("Error calling AI API:", error);
+                retries++;
+                if (retries < MAX_RETRIES) {
+                    const delay = Math.pow(2, retries) * 1000; // Exponential delay (1s, 2s, 4s)
+                    await new Promise(res => setTimeout(res, delay));
+                } else {
+                    generatedText = "Failed to generate passage after multiple retries. Please try again later.";
+                }
+            }
+        }
+
+        loadingIndicator.style.display = 'none'; // Hide loading indicator
+        generatePassageBtn.disabled = false; // Re-enable button
+        topicInput.disabled = false;
+        topicInput.value = ''; // Clear topic input after generation
+        topicInput.blur(); // Remove focus from the input field
+
+        if (generatedText) {
+            // Clean the generated text: remove special characters, numbers, newlines, extra spaces
+            generatedText = generatedText.replace(/[^a-zA-Z\s]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+            fullGameReset(); // Full reset and load generated passage
+            setupNewPassage(generatedText); // Load the generated passage
+        }
+    });
+</script>
+
+<!-- Professional Footer -->
+<footer>
+    <p><strong>Tap Tap Type</strong> by <strong>Ayush Kale</strong></p>
+    <p>A minimal typing speed test to build speed and accuracy.</p>
+    <p>
+        <strong>Shortcuts:</strong>
+        <span style="margin: 0 10px;">Space → Next word</span>
+        <span style="margin: 0 10px;">⌫ Backspace → Undo</span>
+    </p>
+</footer>
+
+</body>
+</html>
